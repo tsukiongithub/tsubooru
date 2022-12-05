@@ -70,7 +70,6 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 
 	const handleSuggestionClick = (ev: MouseEvent<HTMLLIElement>) => {
 		setSuggestionValue("");
-		setSuggestions([]);
 		setSuggestionIndex(-1);
 		setSelectedTags([...selectedTags, ev.currentTarget.innerText]);
 		setSuggestionsActive(false);
@@ -78,12 +77,24 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 
 	// navigate autocomplete dropdown
 	const handleKeyDown = (ev: KeyboardEvent) => {
-		if (ev.key === "ArrowUp") {
+		if (ev.key === "Escape" && suggestionsActive) {
+			ev.preventDefault();
+			setSuggestionIndex(-1);
+			setSuggestionsActive(false);
+		} else if (ev.key === "ArrowUp" && suggestionValue !== "") {
+			ev.preventDefault();
+			if (suggestionsActive === false) {
+				setSuggestionsActive(true);
+			}
 			if (suggestionIndex === 0) {
 				return;
 			}
 			setSuggestionIndex(suggestionIndex - 1);
-		} else if (ev.key === "ArrowDown") {
+		} else if (ev.key === "ArrowDown" && suggestionValue !== "") {
+			ev.preventDefault();
+			if (suggestionsActive === false) {
+				setSuggestionsActive(true);
+			}
 			if (suggestionIndex === suggestions.length - 1) {
 				return;
 			}
@@ -98,25 +109,23 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 				autoComplete={"false"}
 			>
 				<div>
-					<div>
-						<label htmlFor="search">search:</label>
-						<div>
+					<div className="flex gap-4">
+						<div className="relative flex-grow">
 							<input
-								className="w-full"
+								className="h-full w-full rounded-md border-2 border-gray-200 bg-gray-100 p-1 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
 								type="text"
-								name="search"
 								value={suggestionValue}
 								onChange={handleChange}
 								onKeyDown={handleKeyDown}
 							/>
 							{suggestionsActive && (
-								<ul>
+								<ul className="absolute inset-x-0 top-full z-10 mt-1 rounded-b-md">
 									{suggestions.map((suggestion, key) => {
 										return (
 											<li
 												key={key}
 												onClick={handleSuggestionClick}
-												className={key === suggestionIndex ? "bg-red-400" : ""}
+												className={`${key === suggestionIndex ? "bg-red-400" : "bg-gray-300"} py-2 px-1 first:rounded-t-md last:rounded-b-md`}
 											>
 												{suggestion}
 											</li>
@@ -125,6 +134,12 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 								</ul>
 							)}
 						</div>
+						<button
+							className="btn-neutral"
+							type="submit"
+						>
+							search gelbooru
+						</button>
 					</div>
 					<div>
 						<ul>
@@ -144,12 +159,6 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 							})}
 						</ul>
 					</div>
-					<button
-						className="btn-neutral"
-						type="submit"
-					>
-						search gelbooru
-					</button>
 				</div>
 			</form>
 		</>
