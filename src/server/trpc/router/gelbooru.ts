@@ -6,10 +6,11 @@ import process from "process";
 const gelKey = `&api_key=${process.env.GEL_API_KEY}`;
 const gelUID = `&user_id=${process.env.GEL_U_ID}`;
 const postLimit = 48;
+const blacklist = "";
 
 export const gelRouter = router({
 	getTags: publicProcedure.input(z.object({ search: z.string() })).query(async ({ input }) => {
-		const url = `https://gelbooru.com//index.php?page=dapi&s=tag&q=index&json=1&limit=10&name_pattern=%${input.search}%${gelKey}${gelUID}`;
+		const url = `https://gelbooru.com//index.php?page=dapi&s=tag&q=index&json=1&limit=10&name_pattern=${input.search}%${gelKey}${gelUID}`;
 
 		return {
 			tags: await fetch(url)
@@ -19,8 +20,8 @@ export const gelRouter = router({
 				.catch((error) => console.log("error", error)),
 		};
 	}),
-	getPosts: publicProcedure.input(z.object({ search: z.string().nullish(), limit: z.number().nullish() })).query(async ({ input }) => {
-		const url = `https://gelbooru.com//index.php?page=dapi&s=post&q=index&json=1&limit=${input.limit || postLimit}&tags=${input.search}${gelKey}${gelUID}`;
+	getPosts: publicProcedure.input(z.object({ search: z.string().nullish(), limit: z.number().nullish(), blacklist: z.string().nullish() })).query(async ({ input }) => {
+		const url = `https://gelbooru.com//index.php?page=dapi&s=post&q=index&json=1&limit=${input.limit || postLimit}&tags=${input.search}${input.blacklist || blacklist}${gelKey}${gelUID}`;
 
 		return {
 			posts: await fetch(url)

@@ -12,66 +12,71 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 
 	const [suggestionIndex, setSuggestionIndex] = useState<number>(-1);
 	const [suggestionValue, setSuggestionValue] = useState<string>("");
+	const [queryValue, setQueryValue] = useState<string>("");
 
-	const { data: tagsData, isSuccess: tagsDataIsSuccess, refetch: refetchTagsData } = trpc.gelbooru.getTags.useQuery({ search: suggestionValue }, { refetchOnMount: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
+	const { data: tagsData, isSuccess: tagsDataIsSuccess, refetch: refetchTagsData } = trpc.gelbooru.getTags.useQuery({ search: queryValue });
 
 	useEffect(() => {
-		if (tagsDataIsSuccess) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			setSuggestions(tagsData!.tags!.map((tag) => tag.name));
+		if (tagsDataIsSuccess && tagsData && tagsData.tags) {
+			setSuggestions(tagsData.tags.map((tag) => tag.name));
 		}
-	}, [suggestionIndex, tagsData, tagsDataIsSuccess]);
+		if (queryValue.length >= 1) {
+			setSuggestionsActive(true);
+		} else {
+			setSuggestionsActive(false);
+		}
+	}, [tagsDataIsSuccess, tagsData, queryValue, queryValue.length]);
 
 	const [selectedTags, setSelectedTags] = useState<string[]>([]);
 	const [output, setOutput] = useState("");
 
 	props.getSearchOutput(output);
 
-	const removeTag = (key: number) => {
-		setSelectedTags((tag) => tag.filter((_, index) => index !== key));
-	};
-
 	// add tag in input or search if same input is empty
 	const handleSubmit = (ev: FormEvent<HTMLFormElement>) => {
 		ev.preventDefault();
 		setSuggestionsActive(false);
+
 		if (suggestions !== undefined) {
 			if (suggestions[suggestionIndex] !== undefined) {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				setSelectedTags([...selectedTags, suggestions[suggestionIndex]!]);
-				setSuggestionValue("");
 				setSuggestionIndex(-1);
-			} else if (suggestionValue.trim() !== "") {
-				setSelectedTags([...selectedTags, suggestionValue]);
-				setSuggestionValue("");
-			} else if (suggestionsActive !== true) {
-				setOutput(selectedTags.join("+"));
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				setSuggestionValue(`${suggestionValue.substring(0, suggestionValue.lastIndexOf(" ") + 1).toLowerCase()}${suggestions[suggestionIndex]!} `);
+				setQueryValue("");
+			} else if (queryValue.trim() !== "") {
+				setSuggestionIndex(-1);
+				setSuggestionValue(`${suggestionValue} `);
+				setQueryValue("");
 			}
+		}
+		if (suggestionsActive === false) {
+			setOutput(suggestionValue.replaceAll(" ", "+"));
 		}
 	};
 
 	const handleChange = (ev: ChangeEvent<HTMLInputElement>) => {
-		const query = ev.currentTarget.value.toLowerCase();
+		const rawQuery = ev.currentTarget.value;
 
-		setSuggestionValue(query);
-		refetchTagsData();
+		// set query to the last word in the input field
+		const query = rawQuery.substring(rawQuery.lastIndexOf(" ") + 1).toLowerCase();
 
-		if (query.length > 1) {
-			const filteredSuggestions = suggestions.filter((suggestion) => suggestion.toLowerCase().indexOf(query) > -1);
+		setSuggestionValue(rawQuery);
+		setQueryValue(query);
+
+		if (queryValue.length > 1) {
+			refetchTagsData();
+			const filteredSuggestions = suggestions.filter((suggestion) => suggestion.toLowerCase().indexOf(queryValue) > -1);
 			if (filteredSuggestions !== undefined) {
 				setSuggestions(filteredSuggestions);
-				setSuggestionsActive(true);
 			}
 		} else {
-			setSuggestionsActive(false);
 			setSuggestionIndex(-1);
 		}
 	};
 
 	const handleSuggestionClick = (ev: MouseEvent<HTMLLIElement>) => {
-		setSuggestionValue("");
 		setSuggestionIndex(-1);
-		setSelectedTags([...selectedTags, ev.currentTarget.innerText]);
+		setSuggestionValue(`${ev.currentTarget.innerText} `);
 		setSuggestionsActive(false);
 	};
 
@@ -118,7 +123,7 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 								onChange={handleChange}
 								onKeyDown={handleKeyDown}
 							/>
-							{suggestionsActive && (
+							{suggestionsActive ? (
 								<ul className="absolute inset-x-0 top-full z-10 mt-1 rounded-b-md">
 									{suggestions.map((suggestion, key) => {
 										return (
@@ -132,6 +137,8 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 										);
 									})}
 								</ul>
+							) : (
+								<></>
 							)}
 						</div>
 						<button
@@ -140,24 +147,6 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 						>
 							search gelbooru
 						</button>
-					</div>
-					<div>
-						<ul>
-							{selectedTags.map((tag, key) => {
-								return (
-									<li key={key}>
-										<span>{tag}</span>
-										<span
-											onClick={() => {
-												removeTag(key);
-											}}
-										>
-											X
-										</span>
-									</li>
-								);
-							})}
-						</ul>
 					</div>
 				</div>
 			</form>
