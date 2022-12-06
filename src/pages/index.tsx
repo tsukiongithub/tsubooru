@@ -3,11 +3,15 @@ import { type NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { trpc } from "../utils/trpc";
 
 const Home: NextPage = () => {
-	const [search, setSearch] = useState("");
+	const router = useRouter();
+	const { s } = router.query;
+
+	const [search, setSearch] = useState<string>();
 	const [posts, setPosts] = useState<GelPost[]>([]);
 
 	const { data: postsData, isSuccess: postsDataIsSuccess } = trpc.gelbooru.getPosts.useQuery({ search: search }, { refetchOnWindowFocus: false });
@@ -22,9 +26,16 @@ const Home: NextPage = () => {
 		}
 	}, [postsData, postsDataIsSuccess]);
 
-	const handleTagsOutput = (data: string) => {
-		setSearch(data);
-	};
+	useEffect(() => {
+		if (s !== undefined) {
+			if (s.length > 0) {
+				setSearch(s as string);
+			} else {
+				router.push("");
+				setSearch("");
+			}
+		}
+	}, [s, router]);
 
 	return (
 		<>
@@ -39,41 +50,40 @@ const Home: NextPage = () => {
 					href="/favicon.ico"
 				/>
 			</Head>
-			<main className="flex min-h-screen flex-col items-center">
-				<div className="container flex flex-col items-center gap-12 px-4 py-16 ">
-					<div className="w-full">
-						<Search getSearchOutput={handleTagsOutput} />
-					</div>
-					<div className="w-full">
-						{postsDataIsSuccess && (
-							<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-								{posts.length >= 1 ? (
-									posts.map((post, key) => {
-										return (
-											<div
-												key={key}
-												className="relative h-52 w-full"
+			<header className="w-full">
+				<Search />
+			</header>
+			<main>
+				<div className="w-full">
+					{postsDataIsSuccess && (
+						<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+							{posts.length >= 1 ? (
+								posts.map((post, key) => {
+									return (
+										<article
+											key={key}
+											className="relative flex w-full flex-col"
+										>
+											<Link
+												className="group flex h-48 items-center justify-center focus:outline-none"
+												href={post.file_url}
 											>
-												<Link
-													className="group flex h-full w-full items-center justify-center focus:outline-none"
-													href={post.file_url}
-												>
-													<Image
-														className="object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-red-600 group-focus-visible:ring-offset-2"
-														src={post.preview_url}
-														alt={`${post.id}`}
-														fill
-													/>
-												</Link>
-											</div>
-										);
-									})
-								) : (
-									<p>nothing found :/</p>
-								)}
-							</div>
-						)}
-					</div>
+												<Image
+													className={`max-h-full max-w-full object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-red-600 group-focus-visible:ring-offset-2`}
+													src={post.preview_url}
+													alt={`${post.id}`}
+													width={post.preview_width}
+													height={post.preview_height}
+												/>
+											</Link>
+										</article>
+									);
+								})
+							) : (
+								<p>nothing found :/</p>
+							)}
+						</div>
+					)}
 				</div>
 			</main>
 		</>

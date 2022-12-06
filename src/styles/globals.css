@@ -6,6 +6,10 @@
 	body {
 		@apply bg-white;
 	}
+
+	#__next {
+		@apply container mx-auto flex min-h-screen flex-col items-center gap-12 px-4 py-16;
+	}
 }
 
 @layer components {
