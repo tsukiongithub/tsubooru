@@ -20,7 +20,7 @@ export const gelRouter = router({
 				.catch((error) => console.log("error", error)),
 		};
 	}),
-	getPosts: publicProcedure.input(z.object({ search: z.string().nullish(), limit: z.number().nullish(), blacklist: z.string().nullish() })).query(async ({ input }) => {
+	getPosts: publicProcedure.input(z.object({ search: z.union([z.array(z.string()), z.string()]).nullish(), limit: z.number().nullish(), blacklist: z.string().nullish() })).query(async ({ input }) => {
 		const url = `https://gelbooru.com//index.php?page=dapi&s=post&q=index&json=1&limit=${input.limit || postLimit}&tags=${input.search}${input.blacklist || blacklist}${gelKey}${gelUID}`;
 
 		return {

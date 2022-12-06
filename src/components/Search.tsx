@@ -1,12 +1,11 @@
 import { trpc } from "@/utils/trpc";
+import { useRouter } from "next/router";
 import { type FC, type FormEvent, type KeyboardEvent, useState, type MouseEvent, useEffect, type ChangeEvent } from "react";
 
-interface SearchProps {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	getSearchOutput: any;
-}
+const Search: FC = () => {
+	const router = useRouter();
+	const { s } = router.query;
 
-const Search: FC<SearchProps> = (props: SearchProps) => {
 	const [suggestions, setSuggestions] = useState<string[]>([]);
 	const [suggestionsActive, setSuggestionsActive] = useState<boolean>(false);
 
@@ -27,17 +26,24 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 		}
 	}, [tagsDataIsSuccess, tagsData, queryValue, queryValue.length]);
 
-	const [selectedTags, setSelectedTags] = useState<string[]>([]);
-	const [output, setOutput] = useState("");
-
-	props.getSearchOutput(output);
+	useEffect(() => {
+		if (s !== undefined) {
+			if (s.length > 0) {
+				setSuggestionValue(`${s as string} `);
+			}
+		}
+	}, [s]);
 
 	// add tag in input or search if same input is empty
 	const handleSubmit = (ev: FormEvent<HTMLFormElement>) => {
 		ev.preventDefault();
-		setSuggestionsActive(false);
 
-		if (suggestions !== undefined) {
+		// if no suggestion is picked just search for whatever is in the search field and put a " " (SPACE) at the end
+		if (suggestionIndex === -1) {
+			suggestionValue.lastIndexOf(" ") === suggestionValue.length - 1 ? setSuggestionValue(`${suggestionValue}`) : setSuggestionValue(`${suggestionValue} `);
+			setQueryValue("");
+			router.push(`/?s=${suggestionValue.trim().replaceAll(" ", "+")}`);
+		} else {
 			if (suggestions[suggestionIndex] !== undefined) {
 				setSuggestionIndex(-1);
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -48,9 +54,6 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 				setSuggestionValue(`${suggestionValue} `);
 				setQueryValue("");
 			}
-		}
-		if (suggestionsActive === false) {
-			setOutput(suggestionValue.replaceAll(" ", "+"));
 		}
 	};
 
@@ -69,15 +72,13 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 			if (filteredSuggestions !== undefined) {
 				setSuggestions(filteredSuggestions);
 			}
-		} else {
-			setSuggestionIndex(-1);
 		}
 	};
 
 	const handleSuggestionClick = (ev: MouseEvent<HTMLLIElement>) => {
 		setSuggestionIndex(-1);
 		setSuggestionValue(`${ev.currentTarget.innerText} `);
-		setSuggestionsActive(false);
+		setQueryValue("");
 	};
 
 	// navigate autocomplete dropdown
@@ -109,6 +110,7 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 
 	return (
 		<>
+			<p>{queryValue}</p>
 			<form
 				onSubmit={handleSubmit}
 				autoComplete={"false"}
@@ -132,7 +134,7 @@ const Search: FC<SearchProps> = (props: SearchProps) => {
 												onClick={handleSuggestionClick}
 												className={`${key === suggestionIndex ? "bg-red-400" : "bg-gray-300"} py-2 px-1 first:rounded-t-md last:rounded-b-md`}
 											>
-												{suggestion}
+												{suggestion.replaceAll("_", " ")}
 											</li>
 										);
 									})}
