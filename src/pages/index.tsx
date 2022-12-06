@@ -14,8 +14,11 @@ const Home: NextPage = () => {
 
 	useEffect(() => {
 		if (postsDataIsSuccess) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			setPosts(postsData!.posts!.map((post) => post));
+			if (postsData && postsData.posts) {
+				setPosts(postsData.posts.map((post) => post));
+			} else {
+				setPosts([]);
+			}
 		}
 	}, [postsData, postsDataIsSuccess]);
 
@@ -44,26 +47,30 @@ const Home: NextPage = () => {
 					<div className="w-full">
 						{postsDataIsSuccess && (
 							<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-								{posts.map((post, key) => {
-									return (
-										<div
-											key={key}
-											className="relative h-52 w-full"
-										>
-											<Link
-												className="group flex h-full w-full items-center justify-center focus:outline-none"
-												href={post.file_url}
+								{posts.length >= 1 ? (
+									posts.map((post, key) => {
+										return (
+											<div
+												key={key}
+												className="relative h-52 w-full"
 											>
-												<Image
-													className="object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-red-600 group-focus-visible:ring-offset-2"
-													src={post.preview_url}
-													alt={`${post.id}`}
-													fill
-												/>
-											</Link>
-										</div>
-									);
-								})}
+												<Link
+													className="group flex h-full w-full items-center justify-center focus:outline-none"
+													href={post.file_url}
+												>
+													<Image
+														className="object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-red-600 group-focus-visible:ring-offset-2"
+														src={post.preview_url}
+														alt={`${post.id}`}
+														fill
+													/>
+												</Link>
+											</div>
+										);
+									})
+								) : (
+									<p>nothing found :/</p>
+								)}
 							</div>
 						)}
 					</div>
