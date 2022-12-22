@@ -8,13 +8,13 @@
 	}
 
 	#__next {
-		@apply container mx-auto flex min-h-screen flex-col items-center gap-12 px-4 py-16;
+		@apply container mx-auto flex min-h-screen flex-col px-4 py-16;
 	}
 }
 
 @layer components {
 	.btn {
-		@apply rounded-md py-2 px-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2;
+		@apply rounded-md py-2 px-4;
 
 		&-ghost {
 			@apply btn bg-transparent hover:bg-gray-900/40;

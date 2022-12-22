@@ -5,6 +5,6 @@ module.exports = {
 	semi: true,
 	useTabs: true,
 	lineHeight: 1.5,
-	printWidth: 600,
+	printWidth: 80,
 	plugins: [require.resolve("prettier-plugin-tailwindcss")],
 };
