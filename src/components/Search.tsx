@@ -1,10 +1,18 @@
 import { trpc } from "@/utils/trpc";
 import { useRouter } from "next/router";
-import { type FC, type FormEvent, type KeyboardEvent, useState, type MouseEvent, useEffect, type ChangeEvent } from "react";
+import {
+	type FC,
+	type FormEvent,
+	type KeyboardEvent,
+	useState,
+	type MouseEvent,
+	useEffect,
+	type ChangeEvent,
+} from "react";
 
 const Search: FC = () => {
 	const router = useRouter();
-	const { s } = router.query;
+	const { tags } = router.query;
 
 	const [suggestions, setSuggestions] = useState<string[]>([]);
 	const [suggestionsActive, setSuggestionsActive] = useState<boolean>(false);
@@ -13,7 +21,29 @@ const Search: FC = () => {
 	const [suggestionValue, setSuggestionValue] = useState<string>("");
 	const [queryValue, setQueryValue] = useState<string>("");
 
-	const { data: tagsData, isSuccess: tagsDataIsSuccess, refetch: refetchTagsData } = trpc.gelbooru.getTags.useQuery({ search: queryValue });
+	const {
+		data: tagsData,
+		isSuccess: tagsDataIsSuccess,
+		refetch: refetchTagsData,
+	} = trpc.gelbooru.getTags.useQuery({ search: queryValue });
+
+	useEffect(() => {
+		document.addEventListener("keydown", (ev) => {
+			const inputEl = document.querySelector("#searchInput") as HTMLInputElement;
+			if (ev.key === "/" && !(document.activeElement === inputEl)) {
+				ev.preventDefault();
+				inputEl.focus();
+			}
+		});
+	}, []);
+
+	useEffect(() => {
+		console.log(suggestionsActive);
+	}, [suggestionsActive]);
+
+	useEffect(() => {
+		console.log(suggestions);
+	}, [suggestions]);
 
 	useEffect(() => {
 		if (tagsDataIsSuccess && tagsData && tagsData.tags) {
@@ -27,12 +57,13 @@ const Search: FC = () => {
 	}, [tagsDataIsSuccess, tagsData, queryValue, queryValue.length]);
 
 	useEffect(() => {
-		if (s !== undefined) {
-			if (s.length > 0) {
-				setSuggestionValue(`${s as string} `);
+		if (tags !== undefined) {
+			if (tags.length > 0) {
+				const searchedTags = tags as string;
+				setSuggestionValue(`${searchedTags.replaceAll("+", " ")} `);
 			}
 		}
-	}, [s]);
+	}, [tags]);
 
 	// add tag in input or search if same input is empty
 	const handleSubmit = (ev: FormEvent<HTMLFormElement>) => {
@@ -40,14 +71,21 @@ const Search: FC = () => {
 
 		// if no suggestion is picked just search for whatever is in the search field and put a " " (SPACE) at the end
 		if (suggestionIndex === -1) {
-			suggestionValue.lastIndexOf(" ") === suggestionValue.length - 1 ? setSuggestionValue(`${suggestionValue}`) : setSuggestionValue(`${suggestionValue} `);
+			suggestionValue.lastIndexOf(" ") === suggestionValue.length - 1
+				? setSuggestionValue(`${suggestionValue}`)
+				: setSuggestionValue(`${suggestionValue} `);
 			setQueryValue("");
-			router.push(`/?s=${suggestionValue.trim().replaceAll(" ", "+")}`);
+
+			router.query.tags = suggestionValue.trim().replaceAll(" ", "+");
+			router.push(router);
 		} else {
 			if (suggestions[suggestionIndex] !== undefined) {
 				setSuggestionIndex(-1);
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				setSuggestionValue(`${suggestionValue.substring(0, suggestionValue.lastIndexOf(" ") + 1).toLowerCase()}${suggestions[suggestionIndex]!} `);
+				setSuggestionValue(
+					`${suggestionValue.substring(0, suggestionValue.lastIndexOf(" ") + 1).toLowerCase()}${suggestions[
+						suggestionIndex
+					]!} `
+				);
 				setQueryValue("");
 			} else if (queryValue.trim() !== "") {
 				setSuggestionIndex(-1);
@@ -68,7 +106,9 @@ const Search: FC = () => {
 
 		if (queryValue.length > 1) {
 			refetchTagsData();
-			const filteredSuggestions = suggestions.filter((suggestion) => suggestion.toLowerCase().indexOf(queryValue) > -1);
+			const filteredSuggestions = suggestions.filter(
+				(suggestion) => suggestion.toLowerCase().indexOf(queryValue) > -1
+			);
 			if (filteredSuggestions !== undefined) {
 				setSuggestions(filteredSuggestions);
 			}
@@ -82,11 +122,15 @@ const Search: FC = () => {
 	};
 
 	// navigate autocomplete dropdown
-	const handleKeyDown = (ev: KeyboardEvent) => {
-		if (ev.key === "Escape" && suggestionsActive) {
+	const handleKeyDown = (ev: KeyboardEvent<HTMLInputElement>) => {
+		if (ev.key === "Escape") {
 			ev.preventDefault();
-			setSuggestionIndex(-1);
-			setSuggestionsActive(false);
+			if (suggestionsActive) {
+				setSuggestionIndex(-1);
+				setSuggestionsActive(false);
+			} else {
+				ev.currentTarget.blur();
+			}
 		} else if (ev.key === "ArrowUp" && suggestionValue !== "") {
 			ev.preventDefault();
 			if (suggestionsActive === false) {
@@ -119,8 +163,9 @@ const Search: FC = () => {
 					<div className="flex gap-4">
 						<div className="relative flex-grow">
 							<input
-								className="h-full w-full rounded-md border-2 border-gray-200 bg-gray-100 p-1 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+								className="h-full w-full rounded-md border-2 border-gray-200 bg-gray-100 p-1 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
 								type="text"
+								id="searchInput"
 								value={suggestionValue}
 								onChange={handleChange}
 								onKeyDown={handleKeyDown}
@@ -132,7 +177,9 @@ const Search: FC = () => {
 											<li
 												key={key}
 												onClick={handleSuggestionClick}
-												className={`${key === suggestionIndex ? "bg-red-400" : "bg-gray-300"} py-2 px-1 first:rounded-t-md last:rounded-b-md`}
+												className={`${
+													key === suggestionIndex ? "bg-red-400" : "bg-gray-300"
+												} py-2 px-1 first:rounded-t-md last:rounded-b-md`}
 											>
 												{suggestion.replaceAll("_", " ")}
 											</li>

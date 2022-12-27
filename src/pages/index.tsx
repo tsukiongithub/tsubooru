@@ -1,20 +1,29 @@
-import Search from "@/components/Search";
-import { type NextPage } from "next";
+import type { NextPage } from "next";
+
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+
+import { trpc } from "../utils/trpc";
+
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { trpc } from "../utils/trpc";
+import Search from "@/components/Search";
+import isNumber from "@/common/isNumber";
 
 const Home: NextPage = () => {
 	const router = useRouter();
-	const { s } = router.query;
+	const { tags, pid } = router.query;
 
-	const [search, setSearch] = useState<string>();
+	const [search, setSearch] = useState("");
+	const [page, setPage] = useState(0);
+
 	const [posts, setPosts] = useState<GelPost[]>([]);
 
-	const { data: postsData, isSuccess: postsDataIsSuccess } = trpc.gelbooru.getPosts.useQuery({ search: search }, { refetchOnWindowFocus: false });
+	const { data: postsData, isSuccess: postsDataIsSuccess } = trpc.gelbooru.getPosts.useQuery(
+		{ search: search, pid: page },
+		{ refetchOnWindowFocus: false }
+	);
 
 	useEffect(() => {
 		if (postsDataIsSuccess) {
@@ -27,15 +36,35 @@ const Home: NextPage = () => {
 	}, [postsData, postsDataIsSuccess]);
 
 	useEffect(() => {
-		if (s !== undefined) {
-			if (s.length > 0) {
-				setSearch(s as string);
+		if (tags !== undefined) {
+			if (tags.length > 0) {
+				setSearch(tags as string);
 			} else {
-				router.push("");
 				setSearch("");
 			}
+		} else {
+			router.query.tags = "";
 		}
-	}, [s, router]);
+		router.push(router);
+	}, [tags]);
+
+	useEffect(() => {
+		if (pid !== undefined) {
+			setPage(isNumber(pid as string));
+		} else {
+			router.query.pid = "0";
+		}
+		router.push(router);
+	}, [pid]);
+
+	const changePage = (pageDir: string) => {
+		console.log(pageDir);
+		if (pageDir === "next") {
+			router.query.pid = `${page + 1}`;
+		} else if (pageDir === "previous" && page !== 0) {
+			router.query.pid = `${page - 1}`;
+		}
+	};
 
 	return (
 		<>
@@ -50,11 +79,11 @@ const Home: NextPage = () => {
 					href="/favicon.ico"
 				/>
 			</Head>
-			<header className="w-full">
+			<header className="w-full pb-8">
 				<Search />
 			</header>
 			<main>
-				<div className="w-full">
+				<div className="w-full pb-8">
 					{postsDataIsSuccess && (
 						<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
 							{posts.length >= 1 ? (
@@ -69,7 +98,7 @@ const Home: NextPage = () => {
 												href={post.file_url}
 											>
 												<Image
-													className={`max-h-full max-w-full object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-red-600 group-focus-visible:ring-offset-2`}
+													className={`max-h-full max-w-full object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-black`}
 													src={post.preview_url}
 													alt={`${post.id}`}
 													width={post.preview_width}
@@ -85,6 +114,26 @@ const Home: NextPage = () => {
 						</div>
 					)}
 				</div>
+				<footer>
+					<div className="flex justify-center gap-4">
+						<button
+							className="btn-neutral"
+							onClick={() => {
+								changePage("previous");
+							}}
+						>
+							previous
+						</button>
+						<button
+							className="btn-neutral"
+							onClick={() => {
+								changePage("next");
+							}}
+						>
+							next
+						</button>
+					</div>
+				</footer>
 			</main>
 		</>
 	);
