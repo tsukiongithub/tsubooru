@@ -154,16 +154,15 @@ const Search: FC = () => {
 
 	return (
 		<>
-			<p>{queryValue}</p>
 			<form
 				onSubmit={handleSubmit}
 				autoComplete={"false"}
 			>
 				<div>
-					<div className="flex gap-4">
-						<div className="relative flex-grow">
+					<div className="flex flex-col items-center gap-4 sm:flex-row">
+						<div className="relative w-full">
 							<input
-								className="h-full w-full rounded-md border-2 border-gray-200 bg-gray-100 p-1 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
+								className="h-12 w-full rounded-md border-2 border-gray-200 bg-gray-100 p-1 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-black sm:h-full"
 								type="text"
 								id="searchInput"
 								value={suggestionValue}

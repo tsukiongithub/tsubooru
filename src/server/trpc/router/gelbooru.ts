@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { prisma } from "@/utils/prisma";
 import process from "process";
+import removeString from "@/common/removeString";
 
 const gelKey = process.env.GEL_API_KEY;
 const gelUID = process.env.GEL_USER_ID;
@@ -14,14 +15,13 @@ const postsUrl = `https://gelbooru.com//index.php?page=dapi&s=post&q=index&json=
 const postLimit = 48;
 
 const permBlacklist = ["-loli", "-shota", "-child_on_child"];
+const usePermBlacklist = true;
 
 export const gelRouter = router({
 	getTags: publicProcedure.input(z.object({ search: z.string() })).query(async ({ input }) => {
 		const { search } = input;
 
 		const url = `${tagsUrl}&limit=${tagLimit}&name_pattern=${search}%&orderby=${tagOrderBy}&api_key=${gelKey}&user_id=${gelUID}`;
-
-		console.log(url);
 
 		return {
 			tags: await fetch(url)
@@ -37,12 +37,19 @@ export const gelRouter = router({
 				search: z.string(),
 				limit: z.number().nullish(),
 				pid: z.number(),
+				rating: z.string(),
 			})
 		)
 		.query(async ({ input }) => {
-			const { search, pid } = input;
+			const { search, pid, rating } = input;
 
-			const modifiedSearch = `${search}+${permBlacklist.join("+")}`;
+			const modifiedSearch = `${search}${usePermBlacklist ? `+${permBlacklist.join("+")}` : ""}${
+				rating === "safe"
+					? `+-rating:questionable+-rating:explicit+-rating:sensitive`
+					: rating === "nsfw"
+					? "+-rating:general+-rating:sensitive"
+					: ""
+			}`;
 
 			const url = `${postsUrl}&limit=${postLimit}&tags=${modifiedSearch}&pid=${pid}&api_key=${gelKey}&user_id=${gelUID}`;
 

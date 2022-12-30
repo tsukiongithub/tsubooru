@@ -1,4 +1,4 @@
-// Disclaimer: This code was written by Assistant (a computer program) and may not necessarily be the best solution for the problem.
+// Disclaimer: This code was written by ChatGPT (with minimal editing) and may not necessarily be the best solution for the problem.
 
 const toNumber = (input: string): number => {
 	// Use the Number function to try to convert the string to a number

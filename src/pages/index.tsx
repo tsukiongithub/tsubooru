@@ -1,27 +1,34 @@
 import type { NextPage } from "next";
 
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 
 import { trpc } from "../utils/trpc";
 
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import Search from "@/components/Search";
+
 import isNumber from "@/common/isNumber";
+import useWindowDimensions from "@/hooks/useWindowDimensions";
+
+import Search from "@/components/Search";
+import Paginator from "@/components/Paginator";
 
 const Home: NextPage = () => {
 	const router = useRouter();
-	const { tags, pid } = router.query;
+	const { tags, pid, rating } = router.query;
 
+	const { windowWidth } = useWindowDimensions();
+
+	const [contentRating, setContentRating] = useState("");
 	const [search, setSearch] = useState("");
 	const [page, setPage] = useState(0);
 
 	const [posts, setPosts] = useState<GelPost[]>([]);
 
 	const { data: postsData, isSuccess: postsDataIsSuccess } = trpc.gelbooru.getPosts.useQuery(
-		{ search: search, pid: page },
+		{ search: search, pid: page, rating: contentRating },
 		{ refetchOnWindowFocus: false }
 	);
 
@@ -57,13 +64,20 @@ const Home: NextPage = () => {
 		router.push(router);
 	}, [pid]);
 
-	const changePage = (pageDir: string) => {
-		console.log(pageDir);
-		if (pageDir === "next") {
-			router.query.pid = `${page + 1}`;
-		} else if (pageDir === "previous" && page !== 0) {
-			router.query.pid = `${page - 1}`;
+	useEffect(() => {
+		if (rating !== undefined) {
+			setContentRating(rating as string);
+		} else {
+			router.query.rating = "safe";
 		}
+		router.push(router);
+	}, [rating]);
+
+	const handleContentRatingChange = (ev: ChangeEvent<HTMLInputElement>) => {
+		const newRating = ev.currentTarget.value;
+		console.log(newRating);
+		router.query.rating = newRating;
+		router.push(router);
 	};
 
 	return (
@@ -81,11 +95,32 @@ const Home: NextPage = () => {
 			</Head>
 			<header className="w-full pb-8">
 				<Search />
+				<div className="flex items-center py-4">
+					<label>
+						<input
+							type="radio"
+							name="contentRating"
+							value={"safe"}
+							onChange={handleContentRatingChange}
+							defaultChecked
+						/>
+						safe
+					</label>
+					<label>
+						<input
+							type="radio"
+							name="contentRating"
+							value={"nsfw"}
+							onChange={handleContentRatingChange}
+						/>
+						nsfw
+					</label>
+				</div>
 			</header>
 			<main>
-				<div className="w-full pb-8">
+				<div className="py-8">
 					{postsDataIsSuccess && (
-						<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+						<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 sm:px-0 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
 							{posts.length >= 1 ? (
 								posts.map((post, key) => {
 									return (
@@ -94,16 +129,36 @@ const Home: NextPage = () => {
 											className="relative flex w-full flex-col"
 										>
 											<Link
-												className="group flex h-48 items-center justify-center focus:outline-none"
+												className="group flex h-auto max-h-full max-w-full items-center justify-center focus:outline-none sm:h-72 md:h-64 xl:h-48"
 												href={post.file_url}
 											>
-												<Image
-													className={`max-h-full max-w-full object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-black`}
-													src={post.preview_url}
-													alt={`${post.id}`}
-													width={post.preview_width}
-													height={post.preview_height}
-												/>
+												{windowWidth! < 640 ? (
+													post.file_url.includes("video") ? (
+														<Image
+															className={`max-h-full max-w-full border-2 border-blue-500 object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-black`}
+															src={post.sample_url || post.preview_url}
+															alt={`${post.id}: ${post.tags}`}
+															width={post.sample_width || post.preview_width}
+															height={post.sample_height || post.preview_height}
+														/>
+													) : (
+														<Image
+															className={`max-h-full max-w-full object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-black`}
+															src={post.file_url}
+															alt={`${post.id}: ${post.tags}`}
+															width={post.width}
+															height={post.height}
+														/>
+													)
+												) : (
+													<Image
+														className={`max-h-full max-w-full object-contain focus:outline-none group-focus-visible:ring-2 group-focus-visible:ring-black`}
+														src={post.sample_url || post.preview_url}
+														alt={`${post.id}: ${post.tags}`}
+														width={post.sample_width || post.preview_width}
+														height={post.sample_height || post.preview_height}
+													/>
+												)}
 											</Link>
 										</article>
 									);
@@ -114,26 +169,7 @@ const Home: NextPage = () => {
 						</div>
 					)}
 				</div>
-				<footer>
-					<div className="flex justify-center gap-4">
-						<button
-							className="btn-neutral"
-							onClick={() => {
-								changePage("previous");
-							}}
-						>
-							previous
-						</button>
-						<button
-							className="btn-neutral"
-							onClick={() => {
-								changePage("next");
-							}}
-						>
-							next
-						</button>
-					</div>
-				</footer>
+				<Paginator />
 			</main>
 		</>
 	);
