@@ -9,6 +9,10 @@
 const config = {
 	reactStrictMode: true,
 	swcMinify: true,
+	i18n: {
+		locales: ["en"],
+		defaultLocale: "en",
+	},
 	images: {
 		// https://img3.gelbooru.com/8c/46/8c4652fa86d6729512f6e5931fc5fd48.jpeg
 		remotePatterns: [
@@ -18,7 +22,6 @@ const config = {
 				pathname: "/**",
 			},
 		],
-		unoptimized: true,
 	},
 };
 export default config;
