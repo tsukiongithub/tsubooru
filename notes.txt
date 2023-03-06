@@ -1,0 +1,7 @@
+type 0 are normal tags, ie. cat, dog, flower
+type 1 are artist tags, ie. slugbox, shadbase
+type 2 is unkown for now
+type 3 are copyright tags, ie. franchises like league_of_legends
+type 4 are character tags
+type 5 are metadata tags
+type 6 are deprecated tags

@@ -14,7 +14,7 @@
 
 @layer components {
 	.btn {
-		@apply flex max-w-fit rounded-md py-2 px-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-black;
+		@apply flex max-w-fit rounded-md py-2 px-4 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-black;
 
 		&-ghost {
 			@apply btn bg-transparent hover:bg-gray-900/40;

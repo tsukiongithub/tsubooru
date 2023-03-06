@@ -2,7 +2,6 @@ import { z } from "zod";
 import { router, publicProcedure } from "../trpc";
 import { prisma } from "@/utils/prisma";
 import process from "process";
-import removeString from "@/common/removeString";
 
 const gelKey = process.env.GEL_API_KEY;
 const gelUID = process.env.GEL_USER_ID;
@@ -15,7 +14,7 @@ const postsUrl = `https://gelbooru.com//index.php?page=dapi&s=post&q=index&json=
 const postLimit = 48;
 
 const permBlacklist = ["-loli", "-shota", "-child_on_child"];
-const usePermBlacklist = true;
+const usePermBlacklist = false;
 
 export const gelRouter = router({
 	getTags: publicProcedure.input(z.object({ search: z.string() })).query(async ({ input }) => {
@@ -27,7 +26,15 @@ export const gelRouter = router({
 			tags: await fetch(url)
 				.then((response) => response.json())
 				.then((jsonBody) => jsonBody.tag)
-				.then((result: GelTag[]) => result)
+				.then((result: GelTag[]) => {
+					const tags: GelTag[] = [];
+					result.forEach((tag) => {
+						if (tag.count > 0) {
+							tags.push(tag);
+						}
+					});
+					return tags;
+				})
 				.catch((error) => console.log("error", error)),
 		};
 	}),

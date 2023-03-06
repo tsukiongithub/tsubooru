@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { ChangeEvent, useEffect, useState } from "react";
 
 import { trpc } from "../utils/trpc";
+import loadingSpinner from "@/assets/tail-spin.svg";
 
 import Head from "next/head";
 import Image from "next/image";
@@ -14,6 +15,8 @@ import useWindowDimensions from "@/hooks/useWindowDimensions";
 
 import Search from "@/components/Search";
 import Paginator from "@/components/Paginator";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft, faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 const Home: NextPage = () => {
 	const router = useRouter();
@@ -26,6 +29,7 @@ const Home: NextPage = () => {
 	const [page, setPage] = useState(0);
 
 	const [posts, setPosts] = useState<GelPost[]>([]);
+	const [postToShow, setPostToShow] = useState<GelPost>();
 
 	const { data: postsData, isSuccess: postsDataIsSuccess } = trpc.gelbooru.getPosts.useQuery(
 		{ search: search, pid: page, rating: contentRating },
@@ -41,6 +45,15 @@ const Home: NextPage = () => {
 			}
 		}
 	}, [postsData, postsDataIsSuccess]);
+
+	useEffect(() => {
+		if (rating !== undefined) {
+			setContentRating(rating as string);
+		} else {
+			router.query.rating = "safe";
+		}
+		router.push(router);
+	}, [rating]);
 
 	useEffect(() => {
 		if (tags !== undefined) {
@@ -64,20 +77,44 @@ const Home: NextPage = () => {
 		router.push(router);
 	}, [pid]);
 
-	useEffect(() => {
-		if (rating !== undefined) {
-			setContentRating(rating as string);
-		} else {
-			router.query.rating = "safe";
-		}
-		router.push(router);
-	}, [rating]);
-
 	const handleContentRatingChange = (ev: ChangeEvent<HTMLInputElement>) => {
 		const newRating = ev.currentTarget.value;
-		console.log(newRating);
 		router.query.rating = newRating;
 		router.push(router);
+	};
+
+	const handleSlider = (ev: KeyboardEvent) => {
+		if (ev.key === "ArrowLeft") {
+			ev.preventDefault();
+			let prevPost;
+
+			if (postToShow) {
+				posts.map((post, i) => {
+					if (postToShow.id === post.id) {
+						prevPost = posts[i - 1];
+					}
+				});
+
+				if (prevPost) {
+					setPostToShow(prevPost);
+				}
+			}
+		} else if (ev.key === "ArrowRight") {
+			ev.preventDefault();
+			let nextPost;
+
+			if (postToShow) {
+				posts.map((post, i) => {
+					if (postToShow.id === post.id) {
+						nextPost = posts[i + 1];
+					}
+				});
+
+				if (nextPost) {
+					setPostToShow(nextPost);
+				}
+			}
+		}
 	};
 
 	return (
@@ -93,45 +130,46 @@ const Home: NextPage = () => {
 					href="/favicon.ico"
 				/>
 			</Head>
-			<header className="w-full pb-8">
+			<header className="py-6 px-8">
 				<Search />
-				<div className="flex items-center py-4">
-					<label>
+				<div className="flex select-none items-center gap-4 py-4">
+					<label className="flex items-center gap-1">
 						<input
 							type="radio"
 							name="contentRating"
 							value={"safe"}
 							onChange={handleContentRatingChange}
-							defaultChecked
+							defaultChecked={rating === "safe"}
 						/>
 						safe
 					</label>
-					<label>
+					<label className="flex items-center gap-1">
 						<input
 							type="radio"
 							name="contentRating"
 							value={"nsfw"}
 							onChange={handleContentRatingChange}
+							defaultChecked={rating === "nsfw"}
 						/>
 						nsfw
 					</label>
 				</div>
 			</header>
-			<main>
+			<main className="container mx-auto">
 				<div className="py-8">
 					{postsDataIsSuccess && (
 						<div className="grid-flow-rows grid w-full gap-x-6 gap-y-12 sm:grid-cols-2 sm:px-0 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
 							{posts.length >= 1 ? (
 								posts.map((post, key) => {
 									return (
-										<article
+										<div
 											key={key}
-											className="relative flex w-full flex-col"
+											className="relative flex w-full cursor-pointer flex-col"
+											onClick={() => {
+												setPostToShow(post);
+											}}
 										>
-											<Link
-												className="group flex h-auto max-h-full max-w-full items-center justify-center focus:outline-none sm:h-72 md:h-64 xl:h-48"
-												href={post.file_url}
-											>
+											<div className="group flex h-auto max-h-full max-w-full items-center justify-center focus:outline-none sm:h-72 md:h-64 xl:h-48">
 												{windowWidth! < 640 ? (
 													post.file_url.includes("video") ? (
 														<Image
@@ -140,6 +178,8 @@ const Home: NextPage = () => {
 															alt={`${post.id}: ${post.tags}`}
 															width={post.sample_width || post.preview_width}
 															height={post.sample_height || post.preview_height}
+															priority
+															loading="eager"
 														/>
 													) : (
 														<Image
@@ -148,6 +188,8 @@ const Home: NextPage = () => {
 															alt={`${post.id}: ${post.tags}`}
 															width={post.width}
 															height={post.height}
+															priority
+															loading="eager"
 														/>
 													)
 												) : (
@@ -157,10 +199,12 @@ const Home: NextPage = () => {
 														alt={`${post.id}: ${post.tags}`}
 														width={post.sample_width || post.preview_width}
 														height={post.sample_height || post.preview_height}
+														priority
+														loading="eager"
 													/>
 												)}
-											</Link>
-										</article>
+											</div>
+										</div>
 									);
 								})
 							) : (
@@ -171,6 +215,118 @@ const Home: NextPage = () => {
 				</div>
 				<Paginator />
 			</main>
+			{postToShow && (
+				<div
+					className="fixed inset-0 flex flex-col items-center justify-center bg-black/60"
+					onLoad={() => {
+						document.body.style.overflow = "hidden";
+						document.addEventListener("keydown", handleSlider);
+					}}
+				>
+					<button
+						className="btn-neutral absolute top-0 right-0 mr-6 mt-6 p-2"
+						onClick={() => {
+							document.body.style.overflow = "auto";
+							document.removeEventListener("keydown", handleSlider);
+							setPostToShow(undefined);
+						}}
+					>
+						<FontAwesomeIcon
+							className="h-8 w-8"
+							icon={faXmark}
+						/>
+					</button>
+					<div className="flex w-full items-center px-12">
+						<button
+							className="btn-neutral p-3"
+							onClick={() => {
+								let prevPost;
+
+								posts.map((post, i) => {
+									if (postToShow.id === post.id) {
+										prevPost = posts[i - 1];
+									}
+								});
+
+								if (prevPost) {
+									setPostToShow(prevPost);
+								}
+							}}
+						>
+							<FontAwesomeIcon
+								className="h-6 w-6"
+								icon={faArrowLeft}
+							/>
+						</button>
+						<div className="flex w-full justify-center">
+							<Image
+								className="absolute top-1/2 left-1/2 -z-10 -translate-x-1/2 -translate-y-1/2"
+								src={loadingSpinner}
+								alt={""}
+								quality={10}
+								width={100}
+								height={100}
+							/>
+							{postToShow.file_url.includes("video") ? (
+								<div className="flex min-h-[16rem] flex-col items-center justify-center rounded-xl bg-white p-12">
+									<p>videos are currently unsupported.</p>
+									<p>please click the source link below to watch.</p>
+								</div>
+							) : (
+								<Image
+									className={`max-h-[85vh] max-w-[80vw] object-contain`}
+									src={postToShow.file_url}
+									alt={`${postToShow.id}: ${postToShow.tags}`}
+									quality={100}
+									width={postToShow.width}
+									height={postToShow.height}
+									priority
+									loading="eager"
+								/>
+							)}
+						</div>
+						<button
+							className="btn-neutral p-3"
+							onClick={() => {
+								let nextPost;
+
+								posts.map((post, i) => {
+									if (postToShow.id === post.id) {
+										nextPost = posts[i + 1];
+									}
+								});
+
+								if (nextPost) {
+									setPostToShow(nextPost);
+								}
+							}}
+						>
+							<FontAwesomeIcon
+								className="h-6 w-6"
+								icon={faArrowRight}
+							/>
+						</button>
+					</div>
+					<div className="absolute bottom-0 left-1/2 mb-4 flex -translate-x-1/2 gap-4">
+						<Link
+							className="btn-neutral"
+							href={postToShow.file_url}
+							target={"_blank"}
+							prefetch
+						>
+							view on Gelbooru
+						</Link>
+						<Link
+							className="btn-neutral"
+							href={postToShow.source}
+							target={"_blank"}
+							prefetch
+						>
+							source
+						</Link>
+					</div>
+				</div>
+			)}
 		</>
 	);
 };
