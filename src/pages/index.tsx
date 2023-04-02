@@ -31,10 +31,20 @@ const Home: NextPage = () => {
 	const [posts, setPosts] = useState<GelPost[]>([]);
 	const [postToShow, setPostToShow] = useState<GelPost>();
 
-	const { data: postsData, isSuccess: postsDataIsSuccess } = trpc.gelbooru.getPosts.useQuery(
+	const {
+		data: postsData,
+		isSuccess: postsDataIsSuccess,
+		isLoading,
+	} = trpc.gelbooru.getPosts.useQuery(
 		{ search: search, pid: page, rating: contentRating },
 		{ refetchOnWindowFocus: false }
 	);
+
+	useEffect(() => {
+		if (isLoading) {
+			setPosts([]);
+		}
+	}, [isLoading]);
 
 	useEffect(() => {
 		if (postsDataIsSuccess) {

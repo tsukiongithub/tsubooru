@@ -1,0 +1,151 @@
+import json
+import os.path
+import logging
+import asyncio
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.by import By
+
+from prisma import Prisma
+
+
+# disables logging for cleaner console view
+logging.getLogger("WDM").setLevel(logging.ERROR)
+OPTIONS = webdriver.ChromeOptions()
+OPTIONS.headless = True
+OPTIONS.add_experimental_option("excludeSwitches", ["enable-logging"])
+
+# type 0 are normal tags, ie. cat, dog, flower
+# type 1 are artist tags, ie. slugbox, shadbase
+# type 2 is unkown for now
+# type 3 are copyright tags, ie. franchises like league_of_legends
+# type 4 are character tags
+# type 5 are metadata tags
+# type 6 are deprecated tags
+
+
+# server_dirname = "../server/database"
+server_dir = os.path.dirname(__file__)
+server_db_dir = os.path.join(server_dir, "")
+
+API_KEY = "fbefd50f56c535964249926fd4ce32ea13d86dea4fc7cd643ec1b80d2548b3b0"
+USER_ID = "481190"
+
+API_URL = "https://gelbooru.com/index.php?page=dapi&s=tag&q=index&json=1"
+
+
+async def main() -> None:
+    chrome_executable = Service("/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=chrome_executable, options=OPTIONS)
+
+    pid = 0
+    to_dump = []
+
+    while True:
+        url = f"{API_URL}&api_key={API_KEY}&user_id={USER_ID}&pid={pid}"
+
+        try:
+            print(f"trying page: {pid}")
+            driver.get(url)
+            delay = 5
+            WebDriverWait(driver, delay).until(
+                EC.presence_of_element_located((By.TAG_NAME, "pre"))
+            )
+        except NoSuchElementException:
+            # do better error handling
+            print("element could not be found")
+            print("breaking loop...")
+            break
+        except TimeoutException:
+            # do better error handling
+            print("loading the page took too long")
+            print("breaking loop...")
+            break
+        else:
+            try:
+                json_content = json.loads(driver.find_element(By.TAG_NAME, "pre").text)
+            except NoSuchElementException:
+                # do better error handling
+                print("element could not be found")
+                print("breaking loop...")
+                break
+            else:
+                if "tag" in json_content:
+                    json_content = json_content["tag"]
+                    print(f"loaded page: {pid}")
+                else:
+                    print(f"tags not found in page: {pid}")
+                    print("ending tag loading")
+                    break
+                print("adding tags to dump list")
+                for count in json_content:
+                    tag_to_append = {
+                        "tag": {
+                            "name": count["name"],
+                            "type": count["type"],
+                            "tag_count": count["count"],
+                        }
+                    }
+                    to_dump.append(tag_to_append)
+        finally:
+            pid = pid + 1
+
+    driver.close()
+
+    print("adding tags loaded to database")
+    database = Prisma()
+    await database.connect()
+
+    for count, value in enumerate(to_dump):
+        tag = value.get("tag")
+
+        create_tag = await database.tag.upsert(
+            where={"name": str(tag.get("name"))},
+            data={
+                "create": {
+                    "name": str(tag.get("name")),
+                    "type": int(tag.get("type")),
+                    "count": int(tag.get("tag_count")),
+                },
+                "update": {
+                    "type": int(tag.get("type")),
+                    "count": int(tag.get("tag_count")),
+                },
+            },
+        )
+        print(f"created tag: {create_tag.json(indent=2, sort_keys=True)}")
+
+    await database.disconnect()
+
+    # db = Prisma()
+    # await db.connect()
+
+    # for count, value in enumerate(to_dump):
+    #     tag = value.get("tag")
+
+    #     create_tag = await db.tag.create(
+    #         {
+    #             "name": str(tag.get("name")),
+    #             "type": str(tag.get("type")),
+    #             "count": int(tag.get("tag_count")),
+    #         }
+    #     )
+    #     print(f"created tag: {create_tag.json(indent=2, sort_keys=True)}")
+
+    # await db.disconnect()
+
+    # try:
+    #     with open(f"{server_db_dir}tags.json", "w", encoding="utf8") as f:
+    #         f.write(json.dumps(to_dump))
+    # except FileNotFoundError:
+    #     # need better error handling here
+    #     print("file not found")
+    print("finished")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

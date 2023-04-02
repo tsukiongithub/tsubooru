@@ -2,25 +2,18 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider     = "sqlite"
-    url          = env("DATABASE_URL")
-    relationMode = "prisma"
+  provider     = "sqlite"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 model Tag {
-    id          Int              @id @default(autoincrement())
-    name        String
-    count       Int
-    type        String
-    blacklisted Blacklisted_Tag?
-}
-
-model Blacklisted_Tag {
-    id     Int @id @default(autoincrement())
-    tag    Tag @relation(fields: [tag_id], references: [id])
-    tag_id Int @unique
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  count Int
+  type  Int
 }
